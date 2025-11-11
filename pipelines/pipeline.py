@@ -4,25 +4,31 @@ from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.estimator import Estimator
-from sagemaker.workflow.step_collections import RegisterModel  
+from sagemaker.workflow.step_collections import RegisterModel
 
 region = "ap-northeast-1"
 role = "arn:aws:iam::227295996532:role/service-role/AmazonSageMaker-ExecutionRole-20251111T094161"
+bucket = "ml-demo-bucket2285"
 
+# Initialize SageMaker session
 sagemaker_session = sagemaker.session.Session()
 
-# Define parameter for input data
+# Define input parameter for pipeline
 input_data = ParameterString(
-    name="InputData", default_value="s3://ml-demo-bucket/data/iris.csv"
+    name="InputData", default_value=f"s3://{bucket}/data/iris.csv"
 )
 
-# Step 1: Preprocessing
+# -----------------------------
+# Step 1: Data Preprocessing
+# -----------------------------
 processor = SKLearnProcessor(
     framework_version="1.2-1",
     role=role,
     instance_type="ml.m5.large",
     instance_count=1,
+    sagemaker_session=sagemaker_session,
 )
+
 step_process = ProcessingStep(
     name="PreprocessData",
     processor=processor,
@@ -39,15 +45,20 @@ step_process = ProcessingStep(
     code="src/preprocessing.py",
 )
 
+# -----------------------------
 # Step 2: Training
+# -----------------------------
 image_uri = sagemaker.image_uris.retrieve("xgboost", region=region, version="1.5-1")
+
 estimator = Estimator(
     image_uri=image_uri,
     role=role,
     instance_type="ml.m5.large",
     instance_count=1,
-    output_path=f"s3://ml-demo-bucket/output/",
+    output_path=f"s3://{bucket}/output/",
+    sagemaker_session=sagemaker_session,
 )
+
 step_train = TrainingStep(
     name="TrainModel",
     estimator=estimator,
@@ -58,7 +69,9 @@ step_train = TrainingStep(
     },
 )
 
-# Step 3: Register model
+# -----------------------------
+# Step 3: Register Model
+# -----------------------------
 step_register = RegisterModel(
     name="RegisterModel",
     estimator=estimator,
@@ -69,17 +82,29 @@ step_register = RegisterModel(
     transform_instances=["ml.m5.large"],
     model_package_group_name="demo-model-group",
     approval_status="PendingManualApproval",
+    sagemaker_session=sagemaker_session,
 )
 
-# Build pipeline
+# -----------------------------
+# Build the Pipeline
+# -----------------------------
 pipeline = Pipeline(
     name="SageMakerPipelinePOC",
     parameters=[input_data],
     steps=[step_process, step_train, step_register],
+    sagemaker_session=sagemaker_session,
 )
 
-# For GitHub Actions (optional print)
+# -----------------------------
+# Create / Update / Run
+# -----------------------------
 if __name__ == "__main__":
-    definition = pipeline.definition()
-    print("✅ SageMaker pipeline definition created successfully!")
+    print("✅ Building SageMaker pipeline definition...")
 
+    # Create or update the pipeline definition in SageMaker
+    pipeline.upsert(role_arn=role)
+    print("✅ Pipeline created or updated successfully!")
+
+    # Start execution
+    execution = pipeline.start()
+    print("✅ Pipeline execution started:", execution.arn)
