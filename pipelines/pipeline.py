@@ -4,7 +4,7 @@ from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.estimator import Estimator
-from sagemaker.workflow.model_step import RegisterModel
+from sagemaker.workflow.step_collections import RegisterModel  
 
 region = "ap-northeast-1"
 role = "arn:aws:iam::<ACCOUNT_ID>:role/service-role/AmazonSageMaker-ExecutionRole"
