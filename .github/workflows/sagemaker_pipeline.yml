@@ -41,7 +41,7 @@ jobs:
           response = sm.create_pipeline(
               PipelineName='SageMakerPipelinePOC',
               PipelineDefinition=open('pipelines/pipeline.py').read(),
-              RoleArn='arn:aws:iam::<ACCOUNT_ID>:role/service-role/AmazonSageMaker-ExecutionRole'
+              RoleArn='arn:aws:iam::227295996532:role/service-role/AmazonSageMaker-ExecutionRole'
           )
           print("✅ Pipeline created/updated successfully!")
           EOF
