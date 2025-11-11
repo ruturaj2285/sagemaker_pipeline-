@@ -7,7 +7,7 @@ from sagemaker.estimator import Estimator
 from sagemaker.workflow.step_collections import RegisterModel  
 
 region = "ap-northeast-1"
-role = "arn:aws:iam::<ACCOUNT_ID>:role/service-role/AmazonSageMaker-ExecutionRole"
+role = "arn:aws:iam::227295996532:role/service-role/AmazonSageMaker-ExecutionRole-20251111T094161"
 
 sagemaker_session = sagemaker.session.Session()
 
