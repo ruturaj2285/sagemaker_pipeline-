@@ -81,8 +81,7 @@ step_register = RegisterModel(
     inference_instances=["ml.t2.medium"],
     transform_instances=["ml.m5.large"],
     model_package_group_name="demo-model-group",
-    approval_status="PendingManualApproval",
-    sagemaker_session=sagemaker_session,
+    approval_status="PendingManualApproval"
 )
 
 # -----------------------------
