@@ -36,11 +36,11 @@ jobs:
         run: |
            python pipelines/pipeline.py
 
-      - name: Start Pipeline Execution
-        run: |
-          python - <<'EOF'
-          import boto3
-          sm = boto3.client('sagemaker')
-          response = sm.start_pipeline_execution(PipelineName='SageMakerPipelinePOC')
-          print("✅ Pipeline execution started:", response['PipelineExecutionArn'])
-          EOF
+      # - name: Start Pipeline Execution
+      #   run: |
+      #     python - <<'EOF'
+      #     import boto3
+      #     sm = boto3.client('sagemaker')
+      #     response = sm.start_pipeline_execution(PipelineName='SageMakerPipelinePOC')
+      #     print("✅ Pipeline execution started:", response['PipelineExecutionArn'])
+      #     EOF
