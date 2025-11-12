@@ -103,6 +103,7 @@ if __name__ == "__main__":
     # Create or update the pipeline definition in SageMaker
     pipeline.upsert(role_arn=role)
     print("✅ Pipeline created or updated successfully!")
+    print("✅ Pipeline ARN:", details["PipelineArn"])
 
     # Start execution
     execution = pipeline.start()
