@@ -2,7 +2,8 @@ name: Deploy SageMaker Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: 
+        "feature/*"
   workflow_dispatch:
 
 permissions:
