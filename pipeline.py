@@ -99,7 +99,7 @@ pipeline = Pipeline(
 )
 
 if __name__ == "__main__":
-    print("Updating SageMaker pipeline definition only...")
+    print("Updating SageMaker pipeline definition only.ddd..")
 
     pipeline.upsert(role_arn=role)
 
