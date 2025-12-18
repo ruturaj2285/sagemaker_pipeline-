@@ -109,7 +109,6 @@ pipeline = Pipeline(
 
 def upsert_pipeline():
     print("🔄 Updating SageMaker pipeline definition...")
-    pipeline.upsert(role_arn=ROLE_ARN)
     details = pipeline.describe()
     print("✅ Pipeline updated successfully")
     print("🔗 Pipeline ARN:", details["PipelineArn"])
