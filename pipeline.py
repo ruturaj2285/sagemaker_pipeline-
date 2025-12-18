@@ -32,7 +32,7 @@ input_data = ParameterString(
 processor = Processor(
     image_uri=PREPROCESS_IMAGE_URI,
     role=role,
-    instance_type="ml.m5.large",
+    instance_type="ml.m6.large",
     instance_count=1,
     sagemaker_session=sagemaker_session,
 )
@@ -92,7 +92,7 @@ step_register = RegisterModel(
 )
 
 pipeline = Pipeline(
-    name="SageMakerPipelinePOC2285",
+    name="SageMakerPipelinePOC22",
     parameters=[input_data],
     steps=[step_process, step_train, step_register],
     sagemaker_session=sagemaker_session,
