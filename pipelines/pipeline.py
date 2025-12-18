@@ -2,7 +2,7 @@ import sagemaker
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 from sagemaker.workflow.parameters import ParameterString
-from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.processing import Processor
 from sagemaker.estimator import Estimator
 from sagemaker.workflow.step_collections import RegisterModel
 
@@ -10,19 +10,27 @@ region = "ap-northeast-1"
 role = "arn:aws:iam::227295996532:role/sagemaker-service-role"
 bucket = "ml-demo-bucket2286"
 
-# Initialize SageMaker session
+PREPROCESS_IMAGE_URI = (
+    "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
+    "jaime-dev-mdl-data-collection:79773e7"
+)
+
+TRAIN_IMAGE_URI = sagemaker.image_uris.retrieve(
+    "xgboost", region=region, version="1.5-1"
+)
+
 sagemaker_session = sagemaker.session.Session(default_bucket=bucket)
 
-# Define input parameter for pipeline
 input_data = ParameterString(
-    name="InputData", default_value=f"s3://{bucket}/data/iris.csv"
+    name="InputData",
+    default_value=f"s3://{bucket}/data/iris.csv"
 )
 
 # -----------------------------
-# Step 1: Data Preprocessing 123
+# Preprocessing (Docker Image)
 # -----------------------------
-processor = SKLearnProcessor(
-    framework_version="1.2-1",
+processor = Processor(
+    image_uri=PREPROCESS_IMAGE_URI,
     role=role,
     instance_type="ml.m5.large",
     instance_count=1,
@@ -34,24 +42,23 @@ step_process = ProcessingStep(
     processor=processor,
     inputs=[
         sagemaker.processing.ProcessingInput(
-            source=input_data, destination="/opt/ml/processing/input/"
+            source=input_data,
+            destination="/opt/ml/processing/input"
         )
     ],
     outputs=[
         sagemaker.processing.ProcessingOutput(
-            output_name="train_data", source="/opt/ml/processing/output/"
+            output_name="train_data",
+            source="/opt/ml/processing/output"
         )
     ],
-    code="src/preprocessing.py",
 )
 
 # -----------------------------
-# Step 2: Training
+# Training
 # -----------------------------
-image_uri = sagemaker.image_uris.retrieve("xgboost", region=region, version="1.5-1")
-
 estimator = Estimator(
-    image_uri=image_uri,
+    image_uri=TRAIN_IMAGE_URI,
     role=role,
     instance_type="ml.m5.large",
     instance_count=1,
@@ -63,14 +70,14 @@ step_train = TrainingStep(
     name="TrainModel",
     estimator=estimator,
     inputs={
-        "train": step_process.properties.ProcessingOutputConfig.Outputs[
-            "train_data"
-        ].S3Output.S3Uri
+        "train": step_process.properties
+        .ProcessingOutputConfig.Outputs["train_data"]
+        .S3Output.S3Uri
     },
 )
 
 # -----------------------------
-# Step 3: Register Model
+# Register Model
 # -----------------------------
 step_register = RegisterModel(
     name="RegisterModel",
@@ -81,12 +88,9 @@ step_register = RegisterModel(
     inference_instances=["ml.t2.medium"],
     transform_instances=["ml.m5.large"],
     model_package_group_name="demo-model-group",
-    approval_status="PendingManualApproval"
+    approval_status="PendingManualApproval",
 )
 
-# -----------------------------
-# Build the Pipeline
-# -----------------------------
 pipeline = Pipeline(
     name="SageMakerPipelinePOC",
     parameters=[input_data],
@@ -94,18 +98,7 @@ pipeline = Pipeline(
     sagemaker_session=sagemaker_session,
 )
 
-# -----------------------------
-# Create / Update / Run
-# -----------------------------
 if __name__ == "__main__":
-    print("✅ Building SageMaker pipeline definition...")
-
-    # Create or update the pipeline definition in SageMaker
     pipeline.upsert(role_arn=role)
-    # print("✅ Pipeline created or updated successfully!")
-    details = pipeline.describe()
-    print("✅ Pipeline ARN:", details["PipelineArn"])
-
-    # Start execution
     execution = pipeline.start()
-    print("✅ Pipeline execution started:", execution.arn)
+    print("Pipeline execution started:", execution.arn)
