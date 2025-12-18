@@ -8,7 +8,7 @@ from sagemaker.workflow.step_collections import RegisterModel
 
 region = "ap-northeast-1"
 role = "arn:aws:iam::227295996532:role/sagemaker-service-role"
-bucket = "mlmo"
+bucket = "ml-demo-bucket2285"
 
 # Initialize SageMaker session
 sagemaker_session = sagemaker.session.Session()
