@@ -5,7 +5,7 @@ import json
 import os
 
 if __name__ == "__main__":
-    print("✅ Starting evaluation...")
+    print("✅ Starting evaluation1...")
 
     test = pd.read_csv("/opt/ml/input/data/test/test.csv")
     X_test = test.iloc[:, :-1]
