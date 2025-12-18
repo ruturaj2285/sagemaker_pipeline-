@@ -100,12 +100,12 @@ pipeline = Pipeline(
 if __name__ == "__main__":
     print("✅ Building SageMaker pipeline definition...")
 
-    # Create or update the pipeline definition in SageMaker
-    # pipeline.upsert(role_arn=role)
+    Create or update the pipeline definition in SageMaker
+    pipeline.upsert(role_arn=role)
     # print("✅ Pipeline created or updated successfully!")
     details = pipeline.describe()
     print("✅ Pipeline ARN:", details["PipelineArn"])
 
-    # # Start execution
-    # execution = pipeline.start()
-    # print("✅ Pipeline execution started:", execution.arn)
+    # Start execution
+    execution = pipeline.start()
+    print("✅ Pipeline execution started:", execution.arn)
