@@ -106,6 +106,6 @@ if __name__ == "__main__":
     details = pipeline.describe()
     print("✅ Pipeline ARN:", details["PipelineArn"])
 
-    # Start execution
-    execution = pipeline.start()
-    print("✅ Pipeline execution started:", execution.arn)
+    # # Start execution
+    # execution = pipeline.start()
+    # print("✅ Pipeline execution started:", execution.arn)
