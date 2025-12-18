@@ -11,7 +11,7 @@ role = "arn:aws:iam::227295996532:role/sagemaker-service-role"
 bucket = "ml-demo-bucket2285"
 
 # Initialize SageMaker session
-sagemaker_session = sagemaker.session.Session()
+sagemaker_session = sagemaker.session.Session(default_bucket=bucket)
 
 # Define input parameter for pipeline
 input_data = ParameterString(
