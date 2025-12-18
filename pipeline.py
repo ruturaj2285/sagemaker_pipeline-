@@ -99,6 +99,10 @@ pipeline = Pipeline(
 )
 
 if __name__ == "__main__":
+    print("Updating SageMaker pipeline definition only...")
+
     pipeline.upsert(role_arn=role)
-    execution = pipeline.start()
-    print("Pipeline execution started:", execution.arn)
+
+    details = pipeline.describe()
+    print("Pipeline updated successfully")
+    print("Pipeline ARN:", details["PipelineArn"])
