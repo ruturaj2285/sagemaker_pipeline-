@@ -1,25 +1,120 @@
 name: Deploy SageMaker Pipeline
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
 permissions:
-  id-token: write     
-  contents: read 
-  
+  id-token: write
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Enable dry-run mode"
+        type: boolean
+        required: false
+        default: false
+      environment:
+        description: "Environment for dry-run"
+        type: choice
+        required: false
+        options:
+          - development
+          - staging
+          - production
+
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+    branches:
+      - "develop/*"
+      - "release/*"
+      - main
+
+  pull_request:
+    branches:
+      - "develop/*"
+      - "release/*"
+      - main
+
+# --------------------------------------------------
+# Environment detection (same pattern as your CI)
+# --------------------------------------------------
+env:
+  IS_DEV: ${{ (inputs.dry-run && inputs.environment == 'development') ||
+    (!inputs.dry-run &&
+      ((github.event_name == 'pull_request' && startsWith(github.base_ref, 'develop')) ||
+       (github.event_name == 'push' && github.ref_type == 'branch' && startsWith(github.ref_name, 'develop')))
+    ) }}
+
+  IS_STAGING: ${{ (inputs.dry-run && inputs.environment == 'staging') ||
+    (!inputs.dry-run &&
+      ((github.event_name == 'pull_request' && startsWith(github.base_ref, 'release')) ||
+       (github.event_name == 'push' && github.ref_type == 'branch' && startsWith(github.ref_name, 'release')))
+    ) }}
+
+  IS_PROD: ${{ (inputs.dry-run && inputs.environment == 'production') ||
+    (!inputs.dry-run &&
+      ((github.event_name == 'pull_request' && github.base_ref == 'main') ||
+       (github.ref_type == 'tag'))
+    ) }}
 
 jobs:
-  deploy:
+# ==================================================
+# JOB 1: Resolve Environment
+# ==================================================
+  get-environment:
+    name: Get Environment
     runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.set-env.outputs.result }}
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - id: set-env
+        run: |
+          if [ "${{ env.IS_DEV }}" = "true" ]; then
+            echo "result=development" >> $GITHUB_OUTPUT
+          elif [ "${{ env.IS_STAGING }}" = "true" ]; then
+            echo "result=staging" >> $GITHUB_OUTPUT
+          elif [ "${{ env.IS_PROD }}" = "true" ]; then
+            echo "result=production" >> $GITHUB_OUTPUT
+          else
+            echo "::error::Environment not resolved"
+            exit 1
+          fi
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Debug Context
+        run: |
+          echo "Resolved environment: ${{ steps.set-env.outputs.result }}"
+          echo "event: ${{ github.event_name }}"
+          echo "ref:   ${{ github.ref }}"
+
+# ==================================================
+# JOB 2: PROD Approval (ONLY FOR PROD)
+# ==================================================
+  request-approval:
+    name: Request Production Approval
+    needs: [get-environment]
+    runs-on: ubuntu-latest
+    if: ${{ needs.get-environment.outputs.result == 'production' && github.event_name != 'pull_request' }}
+    environment: production   # 👈 GitHub Environment with reviewers
+
+    steps:
+      - name: Waiting for approval
+        run: echo "⏳ Waiting for PROD approval..."
+
+# ==================================================
+# JOB 3: Deploy SageMaker Pipeline
+# ==================================================
+  deploy:
+    name: Deploy SageMaker Pipeline
+    needs: [get-environment, request-approval]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.get-environment.outputs.result }}
+    if: ${{ !failure() && !cancelled() }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.9"
 
@@ -29,18 +124,10 @@ jobs:
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::227295996532:role/sagemaker-pipeline-role
+          role-to-assume: arn:aws:iam::227295996532:role/github-sagemaker-deploy-role
           aws-region: ap-northeast-1
 
-      - name: Deploy and run SageMaker pipeline
+      - name: Deploy SageMaker Pipeline
         run: |
-           python pipelines/pipeline.py
-
-      - name: Start Pipeline Execution
-        run: |
-          python - <<'EOF'
-          import boto3
-          sm = boto3.client('sagemaker')
-          response = sm.start_pipeline_execution(PipelineName='SageMakerPipelinePOC')
-          print("✅ Pipeline execution started:", response['PipelineExecutionArn'])
-          EOF
+          echo "🚀 Deploying to ${{ needs.get-environment.outputs.result }}"
+          python pipelines/pipeline.py --env ${{ needs.get-environment.outputs.result }}
