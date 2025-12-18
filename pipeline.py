@@ -98,11 +98,22 @@ pipeline = Pipeline(
     sagemaker_session=sagemaker_session,
 )
 
-if __name__ == "__main__":
-    print("Updating SageMaker pipeline definition only.ddd..")
+# if __name__ == "__main__":
+#     print("Updating SageMaker pipeline definition only.ddd..")
 
-    pipeline.upsert(role_arn=role)
+#     pipeline.upsert(role_arn=role)
 
+#     details = pipeline.describe()
+#     print("Pipeline updated successfully")
+#     print("Pipeline ARN:", details["PipelineArn"])
+
+def upsert_pipeline():
+    print("🔄 Updating SageMaker pipeline definition...")
+    pipeline.upsert(role_arn=ROLE_ARN)
     details = pipeline.describe()
-    print("Pipeline updated successfully")
-    print("Pipeline ARN:", details["PipelineArn"])
+    print("✅ Pipeline updated successfully")
+    print("🔗 Pipeline ARN:", details["PipelineArn"])
+
+
+if __name__ == "__main__":
+    upsert_pipeline()
