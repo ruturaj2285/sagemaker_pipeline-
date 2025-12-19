@@ -29,25 +29,22 @@ def env_or_none(key: str) -> str:
 REGION = "ap-northeast-1"
 ROLE = "arn:aws:iam::227295996532:role/sagemaker-service-role"
 BUCKET = "ml-demo-bucket2286"
-PIPELINE_NAME = "SageMakerPipelinePOC-jaime"
+PIPELINE_NAME = "SageMakerPipelinePOC-ImageFallback-ENV"
 
 
 # ------------------------------------------------------------------
 # IMAGE RESOLUTION (LATEST → FALLBACK → None)
 # ------------------------------------------------------------------
 PREPROCESS_IMAGE_V1 = (
-    os.getenv("PREPROCESS_IMAGE_V1_LATEST")
-    or os.getenv("PREPROCESS_IMAGE_V1_FALLBACK")
+    os.getenv("PREPROCESS_IMAGE_V1_LATEST", None)
 )
 
 PREPROCESS_IMAGE_V2 = (
-    os.getenv("PREPROCESS_IMAGE_V2_LATEST")
-    or os.getenv("PREPROCESS_IMAGE_V2_FALLBACK")
+    os.getenv("PREPROCESS_IMAGE_V2_LATEST", None)
 )
 
 TRAIN_IMAGE_URI = (
-    os.getenv("TRAIN_IMAGE_LATEST")
-    or os.getenv("TRAIN_IMAGE_FALLBACK")
+    os.getenv("TRAIN_IMAGE_LATEST", None)
 )
 
 print("🖼 Image selection from .env")
