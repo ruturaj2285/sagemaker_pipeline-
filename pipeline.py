@@ -21,21 +21,21 @@ bucket = "ml-demo-bucket2286"
 PREPROCESS_IMAGE_V1_LATEST = None  # ← set when new image pushed
 PREPROCESS_IMAGE_V2_LATEST = (
     "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
-    "jaime-dev-mdl-data-collection:v2"
+    "jaime-dev-mdl-data-collection:v3"
 )
 
 TRAIN_IMAGE_LATEST = None  # ← optional
 
-# Fallback (stable)
-PREPROCESS_IMAGE_V1_FALLBACK = (
-    "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
-    "jaime-dev-mdl-data-collection:v1"
-)
+# # Fallback (stable)
+# PREPROCESS_IMAGE_V1_FALLBACK = (
+#     "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
+#     "jaime-dev-mdl-data-collection:v1"
+# )
 
-PREPROCESS_IMAGE_V2_FALLBACK = (
-    "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
-    "jaime-dev-mdl-data-collection:v1"
-)
+# PREPROCESS_IMAGE_V2_FALLBACK = (
+#     "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
+#     "jaime-dev-mdl-data-collection:v1"
+# )
 
 TRAIN_IMAGE_FALLBACK = (
     "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
