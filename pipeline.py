@@ -17,6 +17,7 @@ load_dotenv()
 
 
 def env_or_none(key: str) -> str:
+    print(key)
     value = os.getenv(key,None)
     return value
 
@@ -29,7 +30,7 @@ role = "arn:aws:iam::227295996532:role/sagemaker-service-role"
 bucket = "ml-demo-bucket2286"
 
 # ------------------------------------------------------------------
-# IMAGE TAG STRATEGY (FROM ENV)
+# IMAGE TAG STRATEGY (FROM ENV)  
 # ------------------------------------------------------------------
 # Latest (optional)
 PREPROCESS_IMAGE_V1_LATEST = env_or_none("PREPROCESS_IMAGE_V1_LATEST")
