@@ -117,7 +117,7 @@ def get_pipeline():
             processor=processor_v2,
             inputs=[
                 ProcessingInput(
-                    source=step_pre_v1.properties
+                    source="test.py"
                     .ProcessingOutputConfig.Outputs["train_data"]
                     .S3Output.S3Uri,
                     destination="/opt/ml/processing/input",
@@ -152,7 +152,7 @@ def get_pipeline():
             name="TrainModel",
             estimator=estimator,
             inputs={
-                "train": step_pre_v2.properties
+                "train": "train.py"
                 .ProcessingOutputConfig.Outputs["train_data"]
                 .S3Output.S3Uri
             },
