@@ -80,7 +80,7 @@ def get_pipeline():
             ],
         )
 
-        steps.append(step_process)
+        # steps.append(step_process)
 
     # ==============================================================
     # Step 2: Training (OPTIONAL)
@@ -106,7 +106,7 @@ def get_pipeline():
             },
         )
 
-        steps.append(step_train)
+        # steps.append(step_train)
 
     # ==============================================================
     # Step 3: Register Model (OPTIONAL)
@@ -124,7 +124,7 @@ def get_pipeline():
             approval_status="PendingManualApproval",
         )
 
-        steps.append(step_register)
+        # steps.append(step_register)
 
     # ==============================================================
     # Pipeline
