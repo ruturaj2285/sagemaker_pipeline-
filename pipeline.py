@@ -176,7 +176,7 @@ def get_pipeline():
     # Pipeline
     # ==============================================================
     pipeline = Pipeline(
-        name="SageMakerPipelinePOC-ImageFallback222222222222222222222",
+        name="SageMakerPipelinePOCfgjrgferhgjker",
         parameters=[input_data],
         steps=steps,
         sagemaker_session=session,
