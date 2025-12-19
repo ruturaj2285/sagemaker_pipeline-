@@ -19,6 +19,7 @@ load_dotenv()
 def env_or_none(key: str) -> str:
     print(key)
     value = os.getenv(key,None)
+    print(value)
     return value
 
 
