@@ -69,6 +69,7 @@ def get_pipeline():
     # ==============================================================
     # Step 1A: Preprocess V1 (if image exists)
     # ==============================================================
+    step_pre_v1 = None
 
     if PREPROCESS_IMAGE_V1:
         processor_v1 = Processor(
@@ -117,7 +118,7 @@ def get_pipeline():
             processor=processor_v2,
             inputs=[
                 ProcessingInput(
-                    source="test.py"
+                    source=step_pre_v1.properties
                     .ProcessingOutputConfig.Outputs["train_data"]
                     .S3Output.S3Uri,
                     destination="/opt/ml/processing/input",
@@ -152,7 +153,7 @@ def get_pipeline():
             name="TrainModel",
             estimator=estimator,
             inputs={
-                "train": "train.py"
+                "train": step_pre_v2.properties
                 .ProcessingOutputConfig.Outputs["train_data"]
                 .S3Output.S3Uri
             },
