@@ -50,14 +50,6 @@ PREPROCESS_IMAGE_V1 = PREPROCESS_IMAGE_V1_LATEST or PREPROCESS_IMAGE_V1_FALLBACK
 PREPROCESS_IMAGE_V2 = PREPROCESS_IMAGE_V2_LATEST or PREPROCESS_IMAGE_V2_FALLBACK
 TRAIN_IMAGE_URI = TRAIN_IMAGE_LATEST or TRAIN_IMAGE_FALLBACK
 
-# Fail fast if anything critical is missing
-for name, image in {
-    "PREPROCESS_IMAGE_V1": PREPROCESS_IMAGE_V1,
-    "PREPROCESS_IMAGE_V2": PREPROCESS_IMAGE_V2,
-    "TRAIN_IMAGE_URI": TRAIN_IMAGE_URI,
-}.items():
-    if not image:
-        raise RuntimeError(f"{name} is not set via env or fallback")
 
 # ------------------------------------------------------------------
 # Session
