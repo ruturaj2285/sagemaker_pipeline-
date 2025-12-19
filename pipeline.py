@@ -97,6 +97,9 @@ def get_pipeline():
             ],
         )
 
+        print(f"step_pre_v1 {step_pre_v1}")
+        print(f"step_pre_v1 {type(step_pre_v1)}")
+
         steps.append(step_pre_v1)
 
     # ==============================================================
