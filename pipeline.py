@@ -18,7 +18,7 @@ load_dotenv()
 
 def env_or_none(key: str) -> str:
     value = os.getenv(key,None)
-    return value if value else None
+    return value
 
 
 # ------------------------------------------------------------------
