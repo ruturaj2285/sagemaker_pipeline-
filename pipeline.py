@@ -10,173 +10,180 @@ from sagemaker.estimator import Estimator
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline_context import PipelineSession
 
+
 # ------------------------------------------------------------------
-# Load environment variables
+# Load .env
 # ------------------------------------------------------------------
 load_dotenv()
 
-
 def env_or_none(key: str) -> str:
-    print(key)
-    value = os.getenv(key,None)
-    print(value)
+    print(key) 
+    value = os.getenv(key,None) 
+    print(value) 
     return value
 
 
 # ------------------------------------------------------------------
 # Config
 # ------------------------------------------------------------------
-region = "ap-northeast-1"
-role = "arn:aws:iam::227295996532:role/sagemaker-service-role"
-bucket = "ml-demo-bucket2286"
-
-# ------------------------------------------------------------------
-# IMAGE TAG STRATEGY (FROM ENV)  
-# ------------------------------------------------------------------
-# Latest (optional)
-PREPROCESS_IMAGE_V1_LATEST = env_or_none("PREPROCESS_IMAGE_V1_LATEST")
-PREPROCESS_IMAGE_V2_LATEST = env_or_none("PREPROCESS_IMAGE_V2_LATEST")
-TRAIN_IMAGE_LATEST = env_or_none("TRAIN_IMAGE_LATEST")
-
-# Fallback (stable)
-PREPROCESS_IMAGE_V1_FALLBACK = env_or_none("PREPROCESS_IMAGE_V1_FALLBACK")
-PREPROCESS_IMAGE_V2_FALLBACK = env_or_none("PREPROCESS_IMAGE_V2_FALLBACK")
-TRAIN_IMAGE_FALLBACK = env_or_none("TRAIN_IMAGE_FALLBACK")
-
-# ------------------------------------------------------------------
-# FINAL IMAGE SELECTION
-# ------------------------------------------------------------------
-PREPROCESS_IMAGE_V1 = PREPROCESS_IMAGE_V1_LATEST or PREPROCESS_IMAGE_V1_FALLBACK
-PREPROCESS_IMAGE_V2 = PREPROCESS_IMAGE_V2_LATEST or PREPROCESS_IMAGE_V2_FALLBACK
-TRAIN_IMAGE_URI = TRAIN_IMAGE_LATEST or TRAIN_IMAGE_FALLBACK
+REGION = "ap-northeast-1"
+ROLE = "arn:aws:iam::227295996532:role/sagemaker-service-role"
+BUCKET = "ml-demo-bucket2286"
+PIPELINE_NAME = "SageMakerPipelinePOC-jaime"
 
 
 # ------------------------------------------------------------------
-# Session
+# IMAGE RESOLUTION (LATEST → FALLBACK → None)
 # ------------------------------------------------------------------
-session = PipelineSession(default_bucket=bucket)
-
-# ------------------------------------------------------------------
-# Parameters
-# ------------------------------------------------------------------
-input_data = ParameterString(
-    name="InputData",
-    default_value=f"s3://{bucket}/data/iris.csv"
+PREPROCESS_IMAGE_V1 = (
+    os.getenv("PREPROCESS_IMAGE_V1_LATEST")
+    or os.getenv("PREPROCESS_IMAGE_V1_FALLBACK")
 )
+
+PREPROCESS_IMAGE_V2 = (
+    os.getenv("PREPROCESS_IMAGE_V2_LATEST")
+    or os.getenv("PREPROCESS_IMAGE_V2_FALLBACK")
+)
+
+TRAIN_IMAGE_URI = (
+    os.getenv("TRAIN_IMAGE_LATEST")
+    or os.getenv("TRAIN_IMAGE_FALLBACK")
+)
+
+print("🖼 Image selection from .env")
+print("PREPROCESS_IMAGE_V1 =", PREPROCESS_IMAGE_V1)
+print("PREPROCESS_IMAGE_V2 =", PREPROCESS_IMAGE_V2)
+print("TRAIN_IMAGE_URI     =", TRAIN_IMAGE_URI)
+
 
 # ------------------------------------------------------------------
 # Pipeline factory
 # ------------------------------------------------------------------
 def get_pipeline():
 
+    session = PipelineSession()
     steps = []
 
-    # ==============================================================
-    # Step 1A: Preprocessing V1
-    # ==============================================================
-    processor_v1 = Processor(
-        image_uri=PREPROCESS_IMAGE_V1,
-        role=role,
-        instance_type="ml.m5.large",
-        instance_count=1,
-        sagemaker_session=session,
+    input_data = ParameterString(
+        name="InputData",
+        default_value=f"s3://{BUCKET}/data/iris.csv",
     )
 
-    step_pre_v1 = ProcessingStep(
-        name="PreprocessDataV1",
-        processor=processor_v1,
-        inputs=[
-            ProcessingInput(
-                source=input_data,
-                destination="/opt/ml/processing/input",
-            )
-        ],
-        outputs=[
-            ProcessingOutput(
-                output_name="train_data",
-                source="/opt/ml/processing/output",
-            )
-        ],
-    )
-    steps.append(step_pre_v1)
+    # ==============================================================
+    # Step 1A: Preprocess V1 (if image exists)
+    # ==============================================================
+    step_pre_v1 = None
+
+    if PREPROCESS_IMAGE_V1:
+        processor_v1 = Processor(
+            image_uri=PREPROCESS_IMAGE_V1,
+            role=ROLE,
+            instance_type="ml.m5.large",
+            instance_count=1,
+            sagemaker_session=session,
+        )
+
+        step_pre_v1 = ProcessingStep(
+            name="PreprocessDataV1",
+            processor=processor_v1,
+            inputs=[
+                ProcessingInput(
+                    source=input_data,
+                    destination="/opt/ml/processing/input",
+                )
+            ],
+            outputs=[
+                ProcessingOutput(
+                    output_name="train_data",
+                    source="/opt/ml/processing/output",
+                )
+            ],
+        )
+
+        steps.append(step_pre_v1)
 
     # ==============================================================
-    # Step 1B: Preprocessing V2
+    # Step 1B: Preprocess V2 (depends on V1)
     # ==============================================================
-    processor_v2 = Processor(
-        image_uri=PREPROCESS_IMAGE_V2,
-        role=role,
-        instance_type="ml.m5.large",
-        instance_count=1,
-        sagemaker_session=session,
-    )
+    # step_pre_v2 = None
 
-    step_pre_v2 = ProcessingStep(
-        name="PreprocessDataV2",
-        processor=processor_v2,
-        inputs=[
-            ProcessingInput(
-                source=step_pre_v1.properties
+    if PREPROCESS_IMAGE_V2:
+        processor_v2 = Processor(
+            image_uri=PREPROCESS_IMAGE_V2,
+            role=ROLE,
+            instance_type="ml.m5.large",
+            instance_count=1,
+            sagemaker_session=session,
+        )
+
+        step_pre_v2 = ProcessingStep(
+            name="PreprocessDataV2",
+            processor=processor_v2,
+            inputs=[
+                ProcessingInput(
+                    source=step_pre_v1.properties
+                    .ProcessingOutputConfig.Outputs["train_data"]
+                    .S3Output.S3Uri,
+                    destination="/opt/ml/processing/input",
+                )
+            ],
+            outputs=[
+                ProcessingOutput(
+                    output_name="train_data",
+                    source="/opt/ml/processing/output",
+                )
+            ],
+        )
+
+        steps.append(step_pre_v2)
+
+    # ==============================================================
+    # Step 2: Training (depends on V2)
+    # ==============================================================
+    # train_step = None
+
+    if TRAIN_IMAGE_URI:
+        estimator = Estimator(
+            image_uri=TRAIN_IMAGE_URI,
+            role=ROLE,
+            instance_type="ml.m5.large",
+            instance_count=1,
+            output_path=f"s3://{BUCKET}/output/",
+            sagemaker_session=session,
+        )
+
+        train_step = TrainingStep(
+            name="TrainModel",
+            estimator=estimator,
+            inputs={
+                "train": step_pre_v2.properties
                 .ProcessingOutputConfig.Outputs["train_data"]
-                .S3Output.S3Uri,
-                destination="/opt/ml/processing/input",
-            )
-        ],
-        outputs=[
-            ProcessingOutput(
-                output_name="train_data",
-                source="/opt/ml/processing/output",
-            )
-        ],
-    )
-    steps.append(step_pre_v2)
+                .S3Output.S3Uri
+            },
+        )
 
-    training_input = (
-        step_pre_v2.properties
-        .ProcessingOutputConfig.Outputs["train_data"]
-        .S3Output.S3Uri
-    )
-
-    # ==============================================================
-    # Step 2: Training
-    # ==============================================================
-    estimator = Estimator(
-        image_uri=TRAIN_IMAGE_URI,
-        role=role,
-        instance_type="ml.m5.large",
-        instance_count=1,
-        output_path=f"s3://{bucket}/output/",
-        sagemaker_session=session,
-    )
-
-    step_train = TrainingStep(
-        name="TrainModel",
-        estimator=estimator,
-        inputs={"train": training_input},
-    )
-    steps.append(step_train)
+        steps.append(train_step)
 
     # ==============================================================
     # Step 3: Register Model
     # ==============================================================
-    step_register = RegisterModel(
-        name="RegisterModel",
-        estimator=estimator,
-        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
-        content_types=["text/csv"],
-        response_types=["text/csv"],
-        inference_instances=["ml.t2.medium"],
-        transform_instances=["ml.m5.large"],
-        model_package_group_name="demo-model-group",
-        approval_status="PendingManualApproval",
-    )
-    steps.append(step_register)
+    # if train_step:
+    #     register_step = RegisterModel(
+    #         name="RegisterModel",
+    #         estimator=estimator,
+    #         model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
+    #         content_types=["text/csv"],
+    #         response_types=["text/csv"],
+    #         inference_instances=["ml.t2.medium"],
+    #         transform_instances=["ml.m5.large"],
+    #         model_package_group_name="demo-model-group",
+    #         approval_status="PendingManualApproval",
+    #     )
 
-    # ==============================================================
-    # Pipeline
-    # ==============================================================
+    #     steps.append(register_step)
+
     pipeline = Pipeline(
-        name="SageMakerPipelinePOCfgjrgferhgjker",
+        name=PIPELINE_NAME,
         parameters=[input_data],
         steps=steps,
         sagemaker_session=session,
@@ -188,12 +195,8 @@ def get_pipeline():
 # ------------------------------------------------------------------
 # Entrypoint
 # ------------------------------------------------------------------
-def upsert_pipeline():
-    pipeline = get_pipeline()
-    print("🔄 Updating SageMaker pipeline definition...")
-    pipeline.upsert(role_arn=role)
-    print("✅ Pipeline updated successfully")
-
-
 if __name__ == "__main__":
-    upsert_pipeline()
+    pipeline = get_pipeline()
+    print("🔄 Upserting SageMaker pipeline definition...")
+    pipeline.upsert(role_arn=ROLE)
+    print("✅ Pipeline updated successfully")
