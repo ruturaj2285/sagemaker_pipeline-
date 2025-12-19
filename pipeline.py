@@ -92,7 +92,7 @@ step_register = RegisterModel(
 )
 
 pipeline = Pipeline(
-    name="SageMakerPipelinePOC2637262",
+    name="SageMakerPipelinePOC00000",
     parameters=[input_data],
     steps=[step_process, step_train, step_register],
     sagemaker_session=sagemaker_session,
