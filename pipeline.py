@@ -1,3 +1,6 @@
+import os
+from dotenv import load_dotenv
+
 import sagemaker
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import ProcessingStep, TrainingStep
@@ -8,6 +11,17 @@ from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline_context import PipelineSession
 
 # ------------------------------------------------------------------
+# Load environment variables
+# ------------------------------------------------------------------
+load_dotenv()
+
+
+def env_or_none(key: str):
+    value = os.getenv(key)
+    return value if value else None
+
+
+# ------------------------------------------------------------------
 # Config
 # ------------------------------------------------------------------
 region = "ap-northeast-1"
@@ -15,39 +29,33 @@ role = "arn:aws:iam::227295996532:role/sagemaker-service-role"
 bucket = "ml-demo-bucket2286"
 
 # ------------------------------------------------------------------
-# IMAGE TAG STRATEGY
+# IMAGE TAG STRATEGY (FROM ENV)
 # ------------------------------------------------------------------
-# Latest (may or may not exist)
-PREPROCESS_IMAGE_V1_LATEST = None  # ← set when new image pushed
-PREPROCESS_IMAGE_V2_LATEST = (
-    "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
-    "jaime-dev-mdl-data-collection:v3"
-)
-
-TRAIN_IMAGE_LATEST = None  # ← optional
+# Latest (optional)
+PREPROCESS_IMAGE_V1_LATEST = env_or_none("PREPROCESS_IMAGE_V1_LATEST")
+PREPROCESS_IMAGE_V2_LATEST = env_or_none("PREPROCESS_IMAGE_V2_LATEST")
+TRAIN_IMAGE_LATEST = env_or_none("TRAIN_IMAGE_LATEST")
 
 # Fallback (stable)
-PREPROCESS_IMAGE_V1_FALLBACK = (
-    "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
-    "jaime-dev-mdl-data-collection:v1"
-)
-
-PREPROCESS_IMAGE_V2_FALLBACK = (
-    "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
-    "jaime-dev-mdl-data-collection:v1"
-)
-
-TRAIN_IMAGE_FALLBACK = (
-    "227295996532.dkr.ecr.ap-northeast-1.amazonaws.com/"
-    "jaime-dev-mdl-training:abb4408"
-)
+PREPROCESS_IMAGE_V1_FALLBACK = env_or_none("PREPROCESS_IMAGE_V1_FALLBACK")
+PREPROCESS_IMAGE_V2_FALLBACK = env_or_none("PREPROCESS_IMAGE_V2_FALLBACK")
+TRAIN_IMAGE_FALLBACK = env_or_none("TRAIN_IMAGE_FALLBACK")
 
 # ------------------------------------------------------------------
-# FINAL IMAGE SELECTION (IF CONDITION)
+# FINAL IMAGE SELECTION
 # ------------------------------------------------------------------
 PREPROCESS_IMAGE_V1 = PREPROCESS_IMAGE_V1_LATEST or PREPROCESS_IMAGE_V1_FALLBACK
 PREPROCESS_IMAGE_V2 = PREPROCESS_IMAGE_V2_LATEST or PREPROCESS_IMAGE_V2_FALLBACK
 TRAIN_IMAGE_URI = TRAIN_IMAGE_LATEST or TRAIN_IMAGE_FALLBACK
+
+# Fail fast if anything critical is missing
+for name, image in {
+    "PREPROCESS_IMAGE_V1": PREPROCESS_IMAGE_V1,
+    "PREPROCESS_IMAGE_V2": PREPROCESS_IMAGE_V2,
+    "TRAIN_IMAGE_URI": TRAIN_IMAGE_URI,
+}.items():
+    if not image:
+        raise RuntimeError(f"{name} is not set via env or fallback")
 
 # ------------------------------------------------------------------
 # Session
@@ -99,48 +107,41 @@ def get_pipeline():
     steps.append(step_pre_v1)
 
     # ==============================================================
-    # Step 1B: Preprocessing V2 (only if image exists)
+    # Step 1B: Preprocessing V2
     # ==============================================================
-    if PREPROCESS_IMAGE_V2:
-        processor_v2 = Processor(
-            image_uri=PREPROCESS_IMAGE_V2,
-            role=role,
-            instance_type="ml.m5.large",
-            instance_count=1,
-            sagemaker_session=session,
-        )
+    processor_v2 = Processor(
+        image_uri=PREPROCESS_IMAGE_V2,
+        role=role,
+        instance_type="ml.m5.large",
+        instance_count=1,
+        sagemaker_session=session,
+    )
 
-        step_pre_v2 = ProcessingStep(
-            name="PreprocessDataV2",
-            processor=processor_v2,
-            inputs=[
-                ProcessingInput(
-                    source=step_pre_v1.properties
-                    .ProcessingOutputConfig.Outputs["train_data"]
-                    .S3Output.S3Uri,
-                    destination="/opt/ml/processing/input",
-                )
-            ],
-            outputs=[
-                ProcessingOutput(
-                    output_name="train_data",
-                    source="/opt/ml/processing/output",
-                )
-            ],
-        )
-        steps.append(step_pre_v2)
+    step_pre_v2 = ProcessingStep(
+        name="PreprocessDataV2",
+        processor=processor_v2,
+        inputs=[
+            ProcessingInput(
+                source=step_pre_v1.properties
+                .ProcessingOutputConfig.Outputs["train_data"]
+                .S3Output.S3Uri,
+                destination="/opt/ml/processing/input",
+            )
+        ],
+        outputs=[
+            ProcessingOutput(
+                output_name="train_data",
+                source="/opt/ml/processing/output",
+            )
+        ],
+    )
+    steps.append(step_pre_v2)
 
-        training_input = (
-            step_pre_v2.properties
-            .ProcessingOutputConfig.Outputs["train_data"]
-            .S3Output.S3Uri
-        )
-    else:
-        training_input = (
-            step_pre_v1.properties
-            .ProcessingOutputConfig.Outputs["train_data"]
-            .S3Output.S3Uri
-        )
+    training_input = (
+        step_pre_v2.properties
+        .ProcessingOutputConfig.Outputs["train_data"]
+        .S3Output.S3Uri
+    )
 
     # ==============================================================
     # Step 2: Training
