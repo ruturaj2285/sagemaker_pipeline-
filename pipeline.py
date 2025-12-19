@@ -16,8 +16,8 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 load_dotenv()
 
 
-def env_or_none(key: str):
-    value = os.getenv(key,none)
+def env_or_none(key: str) -> str:
+    value = os.getenv(key,None)
     return value if value else None
 
 
