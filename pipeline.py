@@ -69,7 +69,6 @@ def get_pipeline():
     # ==============================================================
     # Step 1A: Preprocess V1 (if image exists)
     # ==============================================================
-    step_pre_v1 = None
 
     if PREPROCESS_IMAGE_V1:
         processor_v1 = Processor(
