@@ -32,6 +32,11 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::227295996532:role/sagemaker-pipeline-role
           aws-region: ap-northeast-1
+          
+      - name: Install dependencies
+        run: |
+          pip install python-dotenv
+
 
       - name: Deploy and run SageMaker pipeline
         run: |
