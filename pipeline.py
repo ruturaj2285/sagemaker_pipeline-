@@ -7,20 +7,16 @@ from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.processing import Processor, ProcessingInput, ProcessingOutput
 from sagemaker.estimator import Estimator
-from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline_context import PipelineSession
-
 
 # ------------------------------------------------------------------
 # Load .env
 # ------------------------------------------------------------------
 load_dotenv()
 
-def env_or_none(key: str) -> str:
-    print(key) 
-    value = os.getenv(key,None) 
-    print(value) 
-    return value
+def env_or_none(key: str):
+    value = os.getenv(key)
+    return value if value not in ("", "None", None) else None
 
 
 # ------------------------------------------------------------------
@@ -33,19 +29,11 @@ PIPELINE_NAME = "SageMakerPipelinePOC-ImageFallback-ENV"
 
 
 # ------------------------------------------------------------------
-# IMAGE RESOLUTION (LATEST → FALLBACK → None)
+# Image selection from .env
 # ------------------------------------------------------------------
-PREPROCESS_IMAGE_V1 = (
-    os.getenv("PREPROCESS_IMAGE_V1_LATEST", None)
-)
-
-PREPROCESS_IMAGE_V2 = (
-    os.getenv("PREPROCESS_IMAGE_V2_LATEST", None)
-)
-
-TRAIN_IMAGE_URI = (
-    os.getenv("TRAIN_IMAGE_LATEST", None)
-)
+PREPROCESS_IMAGE_V1 = env_or_none("PREPROCESS_IMAGE_V1_LATEST")
+PREPROCESS_IMAGE_V2 = env_or_none("PREPROCESS_IMAGE_V2_LATEST")
+TRAIN_IMAGE_URI     = env_or_none("TRAIN_IMAGE_LATEST")
 
 print("🖼 Image selection from .env")
 print("PREPROCESS_IMAGE_V1 =", PREPROCESS_IMAGE_V1)
@@ -61,16 +49,20 @@ def get_pipeline():
     session = PipelineSession()
     steps = []
 
+    # --------------------------------------------------------------
+    # Pipeline parameters
+    # --------------------------------------------------------------
     input_data = ParameterString(
         name="InputData",
         default_value=f"s3://{BUCKET}/data/iris.csv",
     )
 
-    # ==============================================================
-    # Step 1A: Preprocess V1 (if image exists)
-    # ==============================================================
-    step_pre_v1 = None
+    # 🔑 Pointer to the latest valid output
+    last_output_uri = input_data
 
+    # ==============================================================
+    # Step 1: Preprocess V1 (optional)
+    # ==============================================================
     if PREPROCESS_IMAGE_V1:
         processor_v1 = Processor(
             image_uri=PREPROCESS_IMAGE_V1,
@@ -85,7 +77,7 @@ def get_pipeline():
             processor=processor_v1,
             inputs=[
                 ProcessingInput(
-                    source=input_data,
+                    source=last_output_uri,
                     destination="/opt/ml/processing/input",
                 )
             ],
@@ -97,17 +89,17 @@ def get_pipeline():
             ],
         )
 
-        print(f"step_pre_v1 {step_pre_v1}")
-        print(f"step_pre_v1 {type(step_pre_v1)}")
-
         steps.append(step_pre_v1)
 
-    # ==============================================================
-    # Step 1B: Preprocess V2 (depends on V1)
-    # ==============================================================
-    # step_pre_v2 = None
-    
+        last_output_uri = (
+            step_pre_v1.properties
+            .ProcessingOutputConfig.Outputs["train_data"]
+            .S3Output.S3Uri
+        )
 
+    # ==============================================================
+    # Step 2: Preprocess V2 (optional)
+    # ==============================================================
     if PREPROCESS_IMAGE_V2:
         processor_v2 = Processor(
             image_uri=PREPROCESS_IMAGE_V2,
@@ -122,9 +114,7 @@ def get_pipeline():
             processor=processor_v2,
             inputs=[
                 ProcessingInput(
-                    source=step_pre_v1.properties
-                    .ProcessingOutputConfig.Outputs["train_data"]
-                    .S3Output.S3Uri,
+                    source=last_output_uri,
                     destination="/opt/ml/processing/input",
                 )
             ],
@@ -138,11 +128,15 @@ def get_pipeline():
 
         steps.append(step_pre_v2)
 
-    # ==============================================================
-    # Step 2: Training (depends on V2)
-    # ==============================================================
-    # train_step = None
+        last_output_uri = (
+            step_pre_v2.properties
+            .ProcessingOutputConfig.Outputs["train_data"]
+            .S3Output.S3Uri
+        )
 
+    # ==============================================================
+    # Step 3: Training (optional)
+    # ==============================================================
     if TRAIN_IMAGE_URI:
         estimator = Estimator(
             image_uri=TRAIN_IMAGE_URI,
@@ -156,33 +150,14 @@ def get_pipeline():
         train_step = TrainingStep(
             name="TrainModel",
             estimator=estimator,
-            inputs={
-                "train": step_pre_v2.properties
-                .ProcessingOutputConfig.Outputs["train_data"]
-                .S3Output.S3Uri
-            },
+            inputs={"train": last_output_uri},
         )
 
         steps.append(train_step)
 
     # ==============================================================
-    # Step 3: Register Model
+    # Pipeline
     # ==============================================================
-    # if train_step:
-    #     register_step = RegisterModel(
-    #         name="RegisterModel",
-    #         estimator=estimator,
-    #         model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
-    #         content_types=["text/csv"],
-    #         response_types=["text/csv"],
-    #         inference_instances=["ml.t2.medium"],
-    #         transform_instances=["ml.m5.large"],
-    #         model_package_group_name="demo-model-group",
-    #         approval_status="PendingManualApproval",
-    #     )
-
-    #     steps.append(register_step)
-
     pipeline = Pipeline(
         name=PIPELINE_NAME,
         parameters=[input_data],
