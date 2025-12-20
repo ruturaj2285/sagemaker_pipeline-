@@ -71,9 +71,9 @@ def get_pipeline():
     # ==============================================================
     step_pre_v1 = None
 
-    if not PREPROCESS_IMAGE_V1:
+    if PREPROCESS_IMAGE_V1:
         processor_v1 = Processor(
-            image_uri=PREPROCESS_IMAGE_V2,
+            image_uri=PREPROCESS_IMAGE_V1,
             role=ROLE,
             instance_type="ml.m5.large",
             instance_count=1,
